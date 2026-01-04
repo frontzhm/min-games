@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>超级玛丽简单版</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #87ceeb 0%, #98d8e8 100%);
+        font-family: 'Arial', sans-serif;
+        padding: 20px;
+      }
+
+      .game-container {
+        display: flex;
+        background: #fff;
+        border-radius: 10px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .sidebar {
+        width: 250px;
+        padding: 30px;
+        background: linear-gradient(180deg, #f5f5f5 0%, #e8e8e8 100%);
+        display: flex;
+        flex-direction: column;
+        border-right: 2px solid #ddd;
+      }
+
+      h1 {
+        color: #333;
+        margin-bottom: 20px;
+        font-size: 24px;
+      }
+
+      .controls {
+        color: #666;
+        margin-bottom: 30px;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      .score {
+        margin-top: auto;
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+        margin-bottom: 10px;
+      }
+
+      .level-info {
+        font-size: 16px;
+        color: #666;
+        margin-bottom: 20px;
+      }
+
+      .game-area {
+        flex: 1;
+        padding: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      canvas {
+        border: 3px solid #333;
+        border-radius: 5px;
+        display: block;
+        background: #87ceeb;
+      }
+
+      .level-complete {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 40px 60px;
+        border-radius: 15px;
+        font-size: 28px;
+        text-align: center;
+        display: none;
+        z-index: 1000;
+        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+        border: 3px solid #ffd700;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="game-container">
+      <div class="sidebar">
+        <h1>🎮 超级玛丽简单版</h1>
+        <div class="controls">
+          <strong>操作说明：</strong><br />
+          ← → 移动<br />
+          空格键 跳跃<br />
+          （小白点）
+        </div>
+        <div class="score">
+          <div>得分: <span id="score">0</span></div>
+          <div style="margin-top: 10px">生命: <span id="lives">40</span></div>
+        </div>
+        <div class="level-info">
+          关卡: <span id="currentLevel">1</span> / <span id="totalLevels">5</span>
+        </div>
+      </div>
+      <div class="game-area">
+        <canvas id="gameCanvas" width="800" height="600"></canvas>
+      </div>
+    </div>
+    <div id="levelComplete" class="level-complete">
+      <div>🎉 关卡完成！</div>
+      <div style="font-size: 16px; margin-top: 10px">按任意键继续下一关</div>
+    </div>
+
+    <script>
+      const canvas = document.getElementById('gameCanvas');
+      // 调整画布高度
+      canvas.height = 600;
+      const ctx = canvas.getContext('2d');
+      const scoreElement = document.getElementById('score');
+      const livesElement = document.getElementById('lives');
+      const currentLevelElement = document.getElementById('currentLevel');
+      const levelCompleteElement = document.getElementById('levelComplete');
+
+      // 音效系统
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+      // 播放音效的函数
+      function playSound(frequency, duration, type = 'sine', volume = 0.3) {
+        try {
+          const oscillator = audioContext.createOscillator();
+          const gainNode = audioContext.createGain();
+
+          oscillator.connect(gainNode);
+          gainNode.connect(audioContext.destination);
+
+          oscillator.frequency.value = frequency;
+          oscillator.type = type;
+          gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+
+          oscillator.start(audioContext.currentTime);
+          oscillator.stop(audioContext.currentTime + duration);
+        } catch (e) {
+          // 如果音频上下文未激活，忽略错误
+        }
+      }
+
+      // 各种音效函数
+      function playJumpSound() {
+        // 跳跃音效：短促的上扬音调
+        playSound(400, 0.1, 'sine', 0.2);
+        setTimeout(() => playSound(500, 0.1, 'sine', 0.15), 50);
+      }
+
+      function playCoinSound() {
+        // 金币音效：清脆的上升音调
+        playSound(523, 0.1, 'sine', 0.25); // C5
+        setTimeout(() => playSound(659, 0.1, 'sine', 0.2), 50); // E5
+        setTimeout(() => playSound(784, 0.15, 'sine', 0.15), 100); // G5
+      }
+
+      function playStompSound() {
+        // 踩敌人音效：低沉的音调
+        playSound(200, 0.15, 'sawtooth', 0.3);
+        setTimeout(() => playSound(150, 0.1, 'sawtooth', 0.2), 50);
+      }
+
+      function playHurtSound() {
+        // 受伤音效：下降的低音
+        playSound(300, 0.2, 'sawtooth', 0.4);
+        setTimeout(() => playSound(200, 0.2, 'sawtooth', 0.3), 100);
+      }
+
+      function playLevelCompleteSound() {
+        // 关卡完成音效：胜利的旋律
+        playSound(523, 0.15, 'sine', 0.3); // C5
+        setTimeout(() => playSound(659, 0.15, 'sine', 0.3), 150); // E5
+        setTimeout(() => playSound(784, 0.15, 'sine', 0.3), 300); // G5
+        setTimeout(() => playSound(1047, 0.3, 'sine', 0.35), 450); // C6
+      }
+
+      function playGameOverSound() {
+        // 游戏结束音效：低沉的下降音调
+        playSound(400, 0.3, 'sawtooth', 0.4);
+        setTimeout(() => playSound(300, 0.3, 'sawtooth', 0.4), 200);
+        setTimeout(() => playSound(200, 0.4, 'sawtooth', 0.4), 400);
+      }
+
+      // 激活音频上下文（需要用户交互）
+      let audioEnabled = false;
+      function enableAudio() {
+        if (!audioEnabled) {
+          audioContext.resume();
+          audioEnabled = true;
+        }
+      }
+
+      // 在用户首次交互时激活音频
+      document.addEventListener('keydown', enableAudio, { once: true });
+      document.addEventListener('click', enableAudio, { once: true });
+
+      // 游戏状态
+      let score = 0;
+      let lives = 40;
+      let gameRunning = true;
+      let currentLevel = 1;
+      const totalLevels = 5;
+
+      // 玩家对象
+      const player = {
+        x: 50,
+        y: 300,
+        width: 30,
+        height: 40,
+        velocityX: 0,
+        velocityY: 0,
+        speed: 1.5,
+        jumpPower: -12,
+        onGround: false,
+        color: '#000000',
+      };
+
+      // 关卡数据
+      const levels = [
+        // 关卡1：简单入门
+        {
+          platforms: [
+            { x: 0, y: 360, width: 200, height: 40 },
+            { x: 250, y: 320, width: 150, height: 40 },
+            { x: 450, y: 280, width: 150, height: 40 },
+            { x: 650, y: 240, width: 150, height: 40 },
+            { x: 0, y: 360, width: 800, height: 40 }, // 地面
+          ],
+          enemies: [
+            { x: 300, y: 280, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+            { x: 500, y: 240, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+          ],
+          coins: [
+            { x: 280, y: 280, width: 20, height: 20, collected: false },
+            { x: 480, y: 240, width: 20, height: 20, collected: false },
+            { x: 680, y: 200, width: 20, height: 20, collected: false },
+          ],
+          finishLine: { x: 750, y: 200, width: 30, height: 40 },
+        },
+        // 关卡2：更多敌人
+        {
+          platforms: [
+            { x: 0, y: 360, width: 150, height: 40 },
+            { x: 200, y: 320, width: 120, height: 40 },
+            { x: 370, y: 280, width: 120, height: 40 },
+            { x: 540, y: 240, width: 120, height: 40 },
+            { x: 700, y: 200, width: 100, height: 40 },
+            { x: 0, y: 360, width: 800, height: 40 }, // 地面
+          ],
+          enemies: [
+            { x: 250, y: 280, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+            { x: 420, y: 240, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+            { x: 590, y: 200, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+            { x: 150, y: 320, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+          ],
+          coins: [
+            { x: 230, y: 280, width: 20, height: 20, collected: false },
+            { x: 400, y: 240, width: 20, height: 20, collected: false },
+            { x: 570, y: 200, width: 20, height: 20, collected: false },
+            { x: 720, y: 160, width: 20, height: 20, collected: false },
+          ],
+          finishLine: { x: 750, y: 160, width: 30, height: 40 },
+        },
+        // 关卡3：复杂跳跃
+        {
+          platforms: [
+            { x: 0, y: 360, width: 120, height: 40 },
+            { x: 150, y: 300, width: 100, height: 40 },
+            { x: 270, y: 240, width: 100, height: 40 },
+            { x: 400, y: 300, width: 100, height: 40 },
+            { x: 530, y: 240, width: 100, height: 40 },
+            { x: 660, y: 180, width: 140, height: 40 },
+            { x: 0, y: 360, width: 800, height: 40 }, // 地面
+          ],
+          enemies: [
+            { x: 190, y: 260, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+            { x: 320, y: 200, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+            { x: 450, y: 260, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+            { x: 580, y: 200, width: 25, height: 25, velocityX: -2, color: '#8B4513' },
+          ],
+          coins: [
+            { x: 180, y: 260, width: 20, height: 20, collected: false },
+            { x: 300, y: 200, width: 20, height: 20, collected: false },
+            { x: 430, y: 260, width: 20, height: 20, collected: false },
+            { x: 560, y: 200, width: 20, height: 20, collected: false },
+            { x: 690, y: 140, width: 20, height: 20, collected: false },
+          ],
+          finishLine: { x: 750, y: 140, width: 30, height: 40 },
+        },
+        // 关卡4：高难度
+        {
+          platforms: [
+            { x: 0, y: 360, width: 80, height: 40 },
+            { x: 130, y: 280, width: 70, height: 40 },
+            { x: 250, y: 220, width: 70, height: 40 },
+            { x: 370, y: 280, width: 70, height: 40 },
+            { x: 490, y: 200, width: 70, height: 40 },
+            { x: 610, y: 280, width: 70, height: 40 },
+            { x: 730, y: 160, width: 70, height: 40 },
+            { x: 0, y: 360, width: 800, height: 40 }, // 地面
+          ],
+          enemies: [
+            { x: 180, y: 240, width: 25, height: 25, velocityX: -2.5, color: '#8B4513' },
+            { x: 300, y: 180, width: 25, height: 25, velocityX: -2.5, color: '#8B4513' },
+            { x: 420, y: 240, width: 25, height: 25, velocityX: -2.5, color: '#8B4513' },
+            { x: 540, y: 160, width: 25, height: 25, velocityX: -2.5, color: '#8B4513' },
+            { x: 660, y: 240, width: 25, height: 25, velocityX: -2.5, color: '#8B4513' },
+          ],
+          coins: [
+            { x: 160, y: 240, width: 20, height: 20, collected: false },
+            { x: 280, y: 180, width: 20, height: 20, collected: false },
+            { x: 400, y: 240, width: 20, height: 20, collected: false },
+            { x: 520, y: 160, width: 20, height: 20, collected: false },
+            { x: 640, y: 240, width: 20, height: 20, collected: false },
+            { x: 750, y: 120, width: 20, height: 20, collected: false },
+          ],
+          finishLine: { x: 750, y: 120, width: 30, height: 40 },
+        },
+        // 关卡5：最终关卡
+        {
+          platforms: [
+            { x: 0, y: 360, width: 60, height: 40 },
+            { x: 110, y: 300, width: 60, height: 40 },
+            { x: 220, y: 240, width: 60, height: 40 },
+            { x: 330, y: 300, width: 60, height: 40 },
+            { x: 440, y: 200, width: 60, height: 40 },
+            { x: 550, y: 280, width: 60, height: 40 },
+            { x: 660, y: 180, width: 60, height: 40 },
+            { x: 750, y: 140, width: 50, height: 40 },
+            { x: 0, y: 360, width: 800, height: 40 }, // 地面
+          ],
+          enemies: [
+            { x: 160, y: 260, width: 25, height: 25, velocityX: -3, color: '#8B4513' },
+            { x: 270, y: 200, width: 25, height: 25, velocityX: -3, color: '#8B4513' },
+            { x: 380, y: 260, width: 25, height: 25, velocityX: -3, color: '#8B4513' },
+            { x: 490, y: 160, width: 25, height: 25, velocityX: -3, color: '#8B4513' },
+            { x: 600, y: 240, width: 25, height: 25, velocityX: -3, color: '#8B4513' },
+            { x: 710, y: 140, width: 25, height: 25, velocityX: -3, color: '#8B4513' },
+          ],
+          coins: [
+            { x: 140, y: 260, width: 20, height: 20, collected: false },
+            { x: 250, y: 200, width: 20, height: 20, collected: false },
+            { x: 360, y: 260, width: 20, height: 20, collected: false },
+            { x: 470, y: 160, width: 20, height: 20, collected: false },
+            { x: 580, y: 240, width: 20, height: 20, collected: false },
+            { x: 690, y: 140, width: 20, height: 20, collected: false },
+            { x: 760, y: 100, width: 20, height: 20, collected: false },
+          ],
+          finishLine: { x: 750, y: 100, width: 30, height: 40 },
+        },
+      ];
+
+      // 当前关卡数据
+      let platforms = [];
+      let enemies = [];
+      let coins = [];
+      let finishLine = null;
+
+      // 键盘状态
+      const keys = {};
+
+      // 加载关卡
+      function loadLevel(levelNumber) {
+        if (levelNumber > totalLevels) {
+          gameRunning = false;
+          playLevelCompleteSound(); // 播放完成所有关卡音效
+          alert('🎉 恭喜！你完成了所有关卡！最终得分: ' + score);
+          return;
+        }
+
+        const level = levels[levelNumber - 1];
+        platforms = JSON.parse(JSON.stringify(level.platforms));
+        enemies = JSON.parse(JSON.stringify(level.enemies));
+        coins = JSON.parse(JSON.stringify(level.coins));
+        finishLine = JSON.parse(JSON.stringify(level.finishLine));
+
+        // 重置玩家位置
+        player.x = 50;
+        player.y = 300;
+        player.velocityX = 0;
+        player.velocityY = 0;
+        player.onGround = false;
+
+        currentLevel = levelNumber;
+        currentLevelElement.textContent = currentLevel;
+        levelCompleteElement.style.display = 'none';
+        levelCompletePending = false;
+      }
+
+      // 关卡完成标志
+      let levelCompletePending = false;
+
+      // 检查关卡完成
+      function checkLevelComplete() {
+        // 如果已经在等待关卡完成确认，不再检查
+        if (levelCompletePending) return;
+
+        // 检查是否到达终点
+        if (finishLine && checkCollision(player, finishLine)) {
+          levelCompletePending = true;
+          levelCompleteElement.style.display = 'block';
+          gameRunning = false;
+          playLevelCompleteSound(); // 播放关卡完成音效
+
+          // 等待按键继续
+          const continueHandler = (e) => {
+            e.preventDefault();
+            document.removeEventListener('keydown', continueHandler);
+            levelCompleteElement.style.display = 'none';
+            levelCompletePending = false;
+            loadLevel(currentLevel + 1);
+            gameRunning = true;
+            gameLoop();
+          };
+          document.addEventListener('keydown', continueHandler, { once: true });
+        }
+      }
+
+      // 键盘事件监听
+      document.addEventListener('keydown', (e) => {
+        keys[e.code] = true;
+        if (e.code === 'Space') {
+          e.preventDefault();
+          if (player.onGround) {
+            player.velocityY = player.jumpPower;
+            player.onGround = false;
+            playJumpSound(); // 播放跳跃音效
+          }
+        }
+      });
+
+      document.addEventListener('keyup', (e) => {
+        keys[e.code] = false;
+      });
+
+      // 碰撞检测
+      function checkCollision(rect1, rect2) {
+        return (
+          rect1.x < rect2.x + rect2.width &&
+          rect1.x + rect1.width > rect2.x &&
+          rect1.y < rect2.y + rect2.height &&
+          rect1.y + rect1.height > rect2.y
+        );
+      }
+
+      // 检查玩家是否在平台上
+      function checkPlatformCollision() {
+        player.onGround = false;
+
+        for (let platform of platforms) {
+          // 检查是否在平台上方（增加容错范围到8像素）
+          if (
+            player.x + player.width > platform.x &&
+            player.x < platform.x + platform.width &&
+            player.y + player.height <= platform.y + 8 &&
+            player.y + player.height >= platform.y - 8 &&
+            player.velocityY >= 0
+          ) {
+            player.y = platform.y - player.height;
+            player.velocityY = 0;
+            player.onGround = true;
+            break;
+          }
+        }
+      }
+
+      // 更新玩家位置
+      function updatePlayer() {
+        // 水平移动
+        if (keys['ArrowLeft']) {
+          player.velocityX = -player.speed;
+        } else if (keys['ArrowRight']) {
+          player.velocityX = player.speed;
+        } else {
+          player.velocityX *= 0.8; // 摩擦力
+        }
+
+        // 应用重力
+        if (!player.onGround) {
+          player.velocityY += 0.6; // 重力加速度
+        }
+
+        // 限制最大下落速度
+        player.velocityY = Math.min(player.velocityY, 15);
+
+        // 更新位置
+        player.x += player.velocityX;
+        player.y += player.velocityY;
+
+        // 边界检测
+        if (player.x < 0) player.x = 0;
+        if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+        if (player.y > canvas.height) {
+          // 掉出屏幕，重置到关卡起始位置
+          player.x = 50;
+          player.y = 300;
+          player.velocityY = 0;
+          player.velocityX = 0;
+          lives--;
+          livesElement.textContent = lives;
+          playHurtSound(); // 播放受伤音效
+          if (lives <= 0) {
+            gameRunning = false;
+            playGameOverSound(); // 播放游戏结束音效
+            alert('游戏结束！最终得分: ' + score + ' | 完成关卡: ' + (currentLevel - 1));
+          }
+        }
+
+        checkPlatformCollision();
+      }
+
+      // 更新敌人
+      function updateEnemies() {
+        for (let enemy of enemies) {
+          enemy.x += enemy.velocityX;
+
+          // 敌人边界检测和转向
+          let onPlatform = false;
+          for (let platform of platforms) {
+            if (
+              enemy.x + enemy.width > platform.x &&
+              enemy.x < platform.x + platform.width &&
+              enemy.y + enemy.height <= platform.y + 5 &&
+              enemy.y + enemy.height >= platform.y - 5
+            ) {
+              onPlatform = true;
+              break;
+            }
+          }
+
+          if (!onPlatform || enemy.x < 0 || enemy.x + enemy.width > canvas.width) {
+            enemy.velocityX *= -1;
+          }
+
+          // 检查与玩家碰撞
+          if (checkCollision(player, enemy)) {
+            // 如果玩家从上方踩到敌人
+            if (player.velocityY > 0 && player.y < enemy.y) {
+              // 移除敌人
+              const index = enemies.indexOf(enemy);
+              enemies.splice(index, 1);
+              score += 100;
+              scoreElement.textContent = score;
+              player.velocityY = -5; // 小弹跳
+              playStompSound(); // 播放踩敌人音效
+            } else {
+              // 玩家受伤
+              player.x = 50;
+              player.y = 300;
+              player.velocityY = 0;
+              player.velocityX = 0;
+              lives--;
+              livesElement.textContent = lives;
+              playHurtSound(); // 播放受伤音效
+              if (lives <= 0) {
+                gameRunning = false;
+                playGameOverSound(); // 播放游戏结束音效
+                alert('游戏结束！最终得分: ' + score + ' | 完成关卡: ' + (currentLevel - 1));
+              }
+            }
+          }
+        }
+      }
+
+      // 更新金币
+      function updateCoins() {
+        for (let coin of coins) {
+          if (!coin.collected && checkCollision(player, coin)) {
+            coin.collected = true;
+            score += 50;
+            scoreElement.textContent = score;
+            playCoinSound(); // 播放收集金币音效
+          }
+        }
+      }
+
+      // 绘制函数
+      function drawPlayer() {
+        ctx.fillStyle = player.color;
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+
+        // 简单的眼睛
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(player.x + 8, player.y + 10, 5, 5);
+        ctx.fillRect(player.x + 17, player.y + 10, 5, 5);
+      }
+
+      function drawPlatforms() {
+        ctx.fillStyle = '#228B22';
+        for (let platform of platforms) {
+          ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
+          // 添加纹理
+          ctx.fillStyle = '#32CD32';
+          ctx.fillRect(platform.x, platform.y, platform.width, 5);
+          ctx.fillStyle = '#228B22';
+        }
+      }
+
+      function drawEnemies() {
+        for (let enemy of enemies) {
+          ctx.fillStyle = enemy.color;
+          ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
+          // 简单的眼睛
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(enemy.x + 5, enemy.y + 5, 5, 5);
+          ctx.fillRect(enemy.x + 15, enemy.y + 5, 5, 5);
+          ctx.fillStyle = enemy.color;
+        }
+      }
+
+      function drawCoins() {
+        for (let coin of coins) {
+          if (!coin.collected) {
+            ctx.fillStyle = '#FFD700';
+            ctx.beginPath();
+            ctx.arc(
+              coin.x + coin.width / 2,
+              coin.y + coin.height / 2,
+              coin.width / 2,
+              0,
+              Math.PI * 2,
+            );
+            ctx.fill();
+            ctx.strokeStyle = '#FFA500';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+          }
+        }
+      }
+
+      function drawBackground() {
+        // 天空渐变
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        gradient.addColorStop(0, '#87CEEB');
+        gradient.addColorStop(1, '#E0F6FF');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        // 云朵
+        ctx.fillStyle = '#FFFFFF';
+        ctx.beginPath();
+        ctx.arc(150, 80, 30, 0, Math.PI * 2);
+        ctx.arc(170, 80, 35, 0, Math.PI * 2);
+        ctx.arc(190, 80, 30, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(500, 60, 25, 0, Math.PI * 2);
+        ctx.arc(515, 60, 30, 0, Math.PI * 2);
+        ctx.arc(530, 60, 25, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawFinishLine() {
+        if (!finishLine) return;
+
+        // 绘制终点旗杆
+        ctx.fillStyle = '#8B4513';
+        ctx.fillRect(finishLine.x + 10, finishLine.y, 5, finishLine.height);
+
+        // 绘制终点旗
+        ctx.fillStyle = '#FF0000';
+        ctx.beginPath();
+        ctx.moveTo(finishLine.x + 15, finishLine.y);
+        ctx.lineTo(finishLine.x + 15, finishLine.y + 15);
+        ctx.lineTo(finishLine.x + 30, finishLine.y + 7);
+        ctx.closePath();
+        ctx.fill();
+
+        // 绘制终点标志
+        ctx.fillStyle = '#FFFF00';
+        ctx.font = 'bold 20px Arial';
+        ctx.fillText('🏁', finishLine.x, finishLine.y - 10);
+      }
+
+      // 游戏循环
+      function gameLoop() {
+        if (!gameRunning) return;
+
+        // 清空画布
+        drawBackground();
+
+        // 更新游戏对象
+        updatePlayer();
+        updateEnemies();
+        updateCoins();
+
+        // 检查关卡完成
+        checkLevelComplete();
+
+        // 绘制游戏对象
+        drawPlatforms();
+        drawCoins();
+        drawEnemies();
+        drawFinishLine();
+        drawPlayer();
+
+        requestAnimationFrame(gameLoop);
+      }
+
+      // 初始化游戏
+      loadLevel(1);
+
+      // 开始游戏
+      gameLoop();
+    </script>
+  </body>
+</html>
+

@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>经典小游戏合集</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        min-height: 100vh;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: 'Arial', sans-serif;
+        padding: 20px;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      header {
+        text-align: center;
+        color: white;
+        margin-bottom: 40px;
+        padding: 30px 0;
+      }
+
+      header h1 {
+        font-size: 48px;
+        margin-bottom: 10px;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      header p {
+        font-size: 20px;
+        opacity: 0.9;
+      }
+
+      .games-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 30px;
+        margin-bottom: 40px;
+      }
+
+      .game-card {
+        background: white;
+        border-radius: 15px;
+        padding: 25px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        transition: transform 0.3s, box-shadow 0.3s;
+        cursor: pointer;
+        text-decoration: none;
+        color: inherit;
+        display: block;
+      }
+
+      .game-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.4);
+      }
+
+      .game-card h2 {
+        font-size: 28px;
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .game-card .emoji {
+        font-size: 48px;
+        margin-bottom: 10px;
+      }
+
+      .game-card .description {
+        color: #666;
+        font-size: 14px;
+        line-height: 1.6;
+        margin-bottom: 15px;
+      }
+
+      .game-card .features {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .game-card .features li {
+        color: #888;
+        font-size: 13px;
+        padding: 5px 0;
+        padding-left: 20px;
+        position: relative;
+      }
+
+      .game-card .features li:before {
+        content: '✓';
+        position: absolute;
+        left: 0;
+        color: #4caf50;
+        font-weight: bold;
+      }
+
+      .play-button {
+        display: inline-block;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 12px 30px;
+        border-radius: 25px;
+        text-decoration: none;
+        font-weight: bold;
+        margin-top: 15px;
+        transition: transform 0.2s;
+      }
+
+      .game-card:hover .play-button {
+        transform: scale(1.05);
+      }
+
+      footer {
+        text-align: center;
+        color: white;
+        padding: 20px 0;
+        opacity: 0.8;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>🎮 经典小游戏合集</h1>
+        <p>点击下方游戏卡片开始游戏</p>
+      </header>
+
+      <div class="games-grid">
+        <a href="mario.html" class="game-card">
+          <div class="emoji">🎮</div>
+          <h2>超级玛丽</h2>
+          <div class="description">
+            经典的平台跳跃游戏，控制角色跳跃、收集金币、击败敌人，完成所有关卡！
+          </div>
+          <ul class="features">
+            <li>5个关卡，难度递增</li>
+            <li>收集金币获得分数</li>
+            <li>踩敌人获得额外分数</li>
+            <li>40条生命，轻松通关</li>
+          </ul>
+          <div class="play-button">开始游戏 →</div>
+        </a>
+
+        <a href="tetris.html" class="game-card">
+          <div class="emoji">🧩</div>
+          <h2>俄罗斯方块</h2>
+          <div class="description">
+            经典的益智消除游戏，移动和旋转方块，填满整行即可消除，挑战你的反应速度！
+          </div>
+          <ul class="features">
+            <li>经典俄罗斯方块玩法</li>
+            <li>消除行数越多分数越高</li>
+            <li>速度随等级递增</li>
+            <li>最高分记录</li>
+          </ul>
+          <div class="play-button">开始游戏 →</div>
+        </a>
+
+        <a href="snake.html" class="game-card">
+          <div class="emoji">🐍</div>
+          <h2>贪吃蛇</h2>
+          <div class="description">控制蛇的移动方向，吃食物让蛇变长，小心不要撞墙或撞到自己！</div>
+          <ul class="features">
+            <li>经典贪吃蛇玩法</li>
+            <li>50条生命，容错率高</li>
+            <li>实时显示长度和得分</li>
+            <li>最高分自动保存</li>
+          </ul>
+          <div class="play-button">开始游戏 →</div>
+        </a>
+
+        <a href="breakout.html" class="game-card">
+          <div class="emoji">🎯</div>
+          <h2>打砖块</h2>
+          <div class="description">用挡板反弹球击破所有砖块，完成关卡挑战，难度逐渐增加！</div>
+          <ul class="features">
+            <li>多关卡系统</li>
+            <li>3条生命</li>
+            <li>每关速度递增</li>
+            <li>精美的视觉效果</li>
+          </ul>
+          <div class="play-button">开始游戏 →</div>
+        </a>
+
+        <a href="invaders.html" class="game-card">
+          <div class="emoji">🚀</div>
+          <h2>飞机大战</h2>
+          <div class="description">控制飞机射击敌人，躲避敌人的攻击，完成所有关卡挑战！</div>
+          <ul class="features">
+            <li>多关卡系统</li>
+            <li>敌人自动射击</li>
+            <li>粒子爆炸效果</li>
+            <li>3条生命</li>
+          </ul>
+          <div class="play-button">开始游戏 →</div>
+        </a>
+
+        <a href="sokoban.html" class="game-card">
+          <div class="emoji">📦</div>
+          <h2>推箱子</h2>
+          <div class="description">将箱子推到目标位置，完成所有关卡。考验你的逻辑思维能力！</div>
+          <ul class="features">
+            <li>5个关卡</li>
+            <li>步数统计</li>
+            <li>重置关卡功能</li>
+            <li>自动过关检测</li>
+          </ul>
+          <div class="play-button">开始游戏 →</div>
+        </a>
+
+        <a href="game2048.html" class="game-card">
+          <div class="emoji">🔢</div>
+          <h2>2048</h2>
+          <div class="description">通过滑动合并相同数字，达到2048！挑战你的策略思维！</div>
+          <ul class="features">
+            <li>经典2048玩法</li>
+            <li>最高分记录</li>
+            <li>达到2048胜利提示</li>
+            <li>流畅的动画效果</li>
+          </ul>
+          <div class="play-button">开始游戏 →</div>
+        </a>
+      </div>
+
+      <footer>
+        <p>© 2024 经典小游戏合集 | 享受游戏的乐趣！</p>
+      </footer>
+    </div>
+  </body>
+</html>
